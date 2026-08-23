@@ -39,3 +39,11 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# local SQLite dev database (Prisma resolves the relative path in
+# DATABASE_URL against prisma/schema.prisma's directory)
+/prisma/dev.db
+/prisma/dev.db-journal
+
+# images uploaded via the dashboard in local dev (production uses Vercel Blob)
+/public/uploads
