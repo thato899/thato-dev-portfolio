@@ -1,19 +1,14 @@
 // Prisma schema for the portfolio's projects & events content.
 //
-// LOCAL DEV uses SQLite (zero setup — just `npm run db:migrate`).
-// PRODUCTION (Vercel) should use Postgres via Neon. Before your first deploy:
-//   1. provider = "postgresql"
-//   2. set DATABASE_URL in Vercel to your Neon connection string
-//   3. run `npx prisma migrate deploy` (or let the Vercel build do it — see README)
-// The schema below intentionally avoids Postgres-only features (native enums,
-// arrays) so it works unmodified against either provider.
+// Postgres everywhere (dev and prod) via a free Neon database — see the
+// README for setup. `DATABASE_URL` in .env / .env.local points at it.
 
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 

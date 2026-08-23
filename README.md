@@ -9,14 +9,25 @@ Vercel Blob (production image uploads).
 
 ## Local development
 
-No external accounts needed — everything runs against a local SQLite file
-and saves uploaded images under `/public/uploads`.
+Needs a Postgres database — either a local one via Docker, or a free
+[Neon](https://neon.tech) database (the same one you'll use in production
+works fine for dev too). Uploaded images save under `/public/uploads` in
+dev, regardless of which database you use.
 
 ```bash
+# Option A: local Postgres via Docker (no account needed)
+docker run -d --name portfolio-postgres -e POSTGRES_PASSWORD=devpassword \
+  -e POSTGRES_DB=portfolio -p 5433:5432 postgres:16-alpine
+# then set in .env: DATABASE_URL="postgresql://postgres:devpassword@localhost:5433/portfolio"
+
 npm install
-npm run db:migrate   # creates prisma/dev.db and applies the schema
+npm run db:migrate   # applies prisma/migrations against DATABASE_URL
+npm run db:seed      # adds a placeholder project + event
 npm run dev
 ```
+
+(Stop/start the container later with `docker stop|start portfolio-postgres`
+— data persists in the container until it's removed.)
 
 Open [http://localhost:3000](http://localhost:3000) for the site, and
 [http://localhost:3000/dashboard](http://localhost:3000/dashboard) for the
@@ -38,24 +49,23 @@ npm run hash-password -- "your-new-password"
 
 ## Deploying (Vercel + Neon + Blob)
 
-1. **Database:** create a free [Neon](https://neon.tech) Postgres database
-   (or add it from the Vercel dashboard's Storage tab — it auto-fills
-   `DATABASE_URL`). Then in `prisma/schema.prisma`, change:
+All done from [vercel.com](https://vercel.com) — no CLI needed:
 
-   ```diff
-   - provider = "sqlite"
-   + provider = "postgresql"
-   ```
-
-   and run `npx prisma migrate deploy` once against the new `DATABASE_URL`.
-2. **Images:** enable Vercel Blob (Vercel dashboard → Storage → Blob →
-   Connect to Project) — this auto-injects `BLOB_READ_WRITE_TOKEN`. Once
-   set, uploads go to Blob instead of the local filesystem automatically
-   (serverless functions can't write to disk persistently).
-3. **Env vars:** set `AUTH_SECRET`, `ADMIN_EMAIL`, `ADMIN_PASSWORD_HASH` in
-   the Vercel project settings (values from `.env.local`, but paste the
-   **unescaped** hash here — Vercel's UI isn't a dotenv parser).
-4. Push to `main` / connect the repo in Vercel and deploy.
+1. **Import the repo:** vercel.com → Add New → Project → import
+   `thato899/thato-dev-portfolio` from GitHub.
+2. **Database:** in the project's Storage tab, add Postgres (Neon) —
+   this auto-fills `DATABASE_URL`. `npm run build` runs
+   `prisma migrate deploy` automatically, so the schema is created on the
+   first deploy — no manual migration step needed.
+3. **Images:** in the same Storage tab, add Blob — this auto-fills
+   `BLOB_READ_WRITE_TOKEN`. Uploads switch from local disk to Blob
+   automatically once that variable exists (serverless has no persistent
+   disk).
+4. **Env vars:** in Project Settings → Environment Variables, add
+   `AUTH_SECRET`, `ADMIN_EMAIL`, `ADMIN_PASSWORD_HASH` (values from your
+   local `.env.local` — but paste the **unescaped** hash here; Vercel's UI
+   isn't a dotenv parser, so no `\$` needed).
+5. Deploy. Every push to `main` redeploys automatically after this.
 
 ## Project structure
 
