@@ -2,14 +2,21 @@
 //
 // Postgres everywhere (dev and prod) via a free Neon database — see the
 // README for setup. `DATABASE_URL` in .env / .env.local points at it.
+//
+// `directUrl` is Neon's unpooled connection, used only for running
+// migrations — DDL over a transaction-mode pooler (what DATABASE_URL is)
+// can be unreliable. Both point at the same DB, just different connection
+// modes. DATABASE_URL_UNPOOLED must be set even for a non-Neon Postgres
+// (e.g. plain Docker) — just set it to the same value as DATABASE_URL.
 
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DATABASE_URL_UNPOOLED")
 }
 
 model Project {

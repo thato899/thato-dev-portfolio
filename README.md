@@ -9,25 +9,30 @@ Vercel Blob (production image uploads).
 
 ## Local development
 
-Needs a Postgres database — either a local one via Docker, or a free
-[Neon](https://neon.tech) database (the same one you'll use in production
-works fine for dev too). Uploaded images save under `/public/uploads` in
-dev, regardless of which database you use.
+Uses the same free [Neon](https://neon.tech) Postgres database as
+production — one database serves both, which is simplest at this scale.
+`DATABASE_URL`/`DATABASE_URL_UNPOOLED` are already in `.env` (and were
+pulled into `.env.local` by the Vercel CLI when the project was linked —
+run `vercel env pull .env.local` again any time to refresh them). Uploaded
+images save under `/public/uploads` locally unless `BLOB_READ_WRITE_TOKEN`
+is set (it already is, via `.env.local`), in which case they go straight
+to the real Vercel Blob store.
 
 ```bash
-# Option A: local Postgres via Docker (no account needed)
-docker run -d --name portfolio-postgres -e POSTGRES_PASSWORD=devpassword \
-  -e POSTGRES_DB=portfolio -p 5433:5432 postgres:16-alpine
-# then set in .env: DATABASE_URL="postgresql://postgres:devpassword@localhost:5433/portfolio"
-
 npm install
 npm run db:migrate   # applies prisma/migrations against DATABASE_URL
-npm run db:seed      # adds a placeholder project + event
+npm run db:seed      # adds a placeholder project + event (skips if data exists)
 npm run dev
 ```
 
-(Stop/start the container later with `docker stop|start portfolio-postgres`
-— data persists in the container until it's removed.)
+Prefer an isolated local database instead of sharing prod's? Run Postgres
+in Docker and point `.env`'s `DATABASE_URL`/`DATABASE_URL_UNPOOLED` at it:
+
+```bash
+docker run -d --name portfolio-postgres -e POSTGRES_PASSWORD=devpassword \
+  -e POSTGRES_DB=portfolio -p 5433:5432 postgres:16-alpine
+# DATABASE_URL="postgresql://postgres:devpassword@localhost:5433/portfolio"
+```
 
 Open [http://localhost:3000](http://localhost:3000) for the site, and
 [http://localhost:3000/dashboard](http://localhost:3000/dashboard) for the
@@ -49,23 +54,24 @@ npm run hash-password -- "your-new-password"
 
 ## Deploying (Vercel + Neon + Blob)
 
-All done from [vercel.com](https://vercel.com) — no CLI needed:
+Already set up: the GitHub repo is linked to a Vercel project
+(`thato-malulekas-projects/thato-dev-portfolio`), with Neon Postgres and a
+public Blob store both provisioned and connected, and `AUTH_SECRET` /
+`ADMIN_EMAIL` / `ADMIN_PASSWORD_HASH` set across Production, Preview, and
+Development. Every push to `main` redeploys automatically —
+`npm run build` runs `prisma migrate deploy` first, so schema changes ship
+with the code that needs them.
 
-1. **Import the repo:** vercel.com → Add New → Project → import
-   `thato899/thato-dev-portfolio` from GitHub.
-2. **Database:** in the project's Storage tab, add Postgres (Neon) —
-   this auto-fills `DATABASE_URL`. `npm run build` runs
-   `prisma migrate deploy` automatically, so the schema is created on the
-   first deploy — no manual migration step needed.
-3. **Images:** in the same Storage tab, add Blob — this auto-fills
-   `BLOB_READ_WRITE_TOKEN`. Uploads switch from local disk to Blob
-   automatically once that variable exists (serverless has no persistent
-   disk).
-4. **Env vars:** in Project Settings → Environment Variables, add
-   `AUTH_SECRET`, `ADMIN_EMAIL`, `ADMIN_PASSWORD_HASH` (values from your
-   local `.env.local` — but paste the **unescaped** hash here; Vercel's UI
-   isn't a dotenv parser, so no `\$` needed).
-5. Deploy. Every push to `main` redeploys automatically after this.
+To set this up again from scratch on a new project:
+
+```bash
+npx vercel login
+npx vercel link --yes
+npx vercel blob create-store <name> --access public --yes
+npx vercel integration add neon   # first run prints a terms-acceptance URL;
+                                   # open it, accept, then re-run this command
+npx vercel env add AUTH_SECRET production   # repeat per env var, per environment
+```
 
 ## Project structure
 
